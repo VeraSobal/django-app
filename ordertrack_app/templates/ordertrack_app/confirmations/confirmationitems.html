@@ -1,0 +1,27 @@
+{% extends 'ordertrack_app/base.html' %}
+
+{% block title %}Confirmations{% endblock %}
+
+{% block content %}
+<h2>{{ confirmationitems.0.confirmation_id }} {{ confirmationitems.0.confirmation.name }}</h2>
+<table class="table table-light table-hover">
+    <small>
+        <tr>
+            {% if confirmationitems %}
+            <th class="col-auto">Client</th>
+            <th class="col-auto">Product</th>
+            <th class="col-auto">Quantity</th>
+            {% endif %}
+        </tr>
+        {% for confirmationitem in confirmationitems %}
+        <tr>
+            <td>{{ confirmationitem.client.name }}</td>
+            <td>{{ confirmationitem.product.name }}</td>
+            <td>{{ confirmationitem.quantity }}</td>
+        </tr>
+        {% empty %}
+        <li class="list-group-item">No items</li>
+        {% endfor %}
+    </small>
+</table>
+{% endblock %}

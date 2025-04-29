@@ -1,0 +1,43 @@
+{% extends 'ordertrack_app/base.html' %}
+
+{% block title %}Confirmations{% endblock %}
+
+{% block content %}
+<h2>Confirmations</h2>
+<table class="table table-light table-hover">
+    <small>
+        <tr>
+            {% if confirmations %}
+            <th class="col-auto">Confirmation</th>
+            <th class="col-auto">Order</th>
+            {% endif %}
+        </tr>
+        {% for confirmation in confirmations %}
+        <tr>
+            <td>
+                <li class="list-group-item">
+                    <a href="{% url 'confirmationitems' confirmation.pk %}">
+                        <p>{{ confirmation.name }}</p>
+                    </a>
+                    <p>{{ confirmation.code }}</p>
+                    <small>{% if confirmation.comment %}Comment {{ confirmation.comment }}{% else %}-{% endif %}</small>
+                </li>
+            </td>
+
+            <td>
+                <li class="list-group-item">
+                    {% for order in confirmation.orders.all %}
+                    <small>{{ order.id }}</small><br>
+                    {% empty %}
+                    <small>No orders</small>
+                    {% endfor %}
+                </li>
+            </td>
+
+        </tr>
+        {% empty %}
+        <li class="list-group-item">No confirmations</li>
+        {% endfor %}
+    </small>
+</table>
+{% endblock %}

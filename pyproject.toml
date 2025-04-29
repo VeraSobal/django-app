@@ -1,0 +1,23 @@
+[project]
+name = "django-app"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "VeraSobal",email = "verasobal@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "django (>=5.2,<6.0)",
+    "pandas (>=2.2.3,<3.0.0)",
+    "openpyxl (>=3.1.5,<4.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+faker = "^37.1.0"
+
