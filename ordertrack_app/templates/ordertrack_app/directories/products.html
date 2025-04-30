@@ -21,14 +21,14 @@
             <td>{{ product.name }}</td>
             <td>{{ product.description }}</td>
             <td>
-                {% for detail in product.details.all %}
+                {% for detail in product.prefetched_details %}
                 {{ detail.price }}<br>
                 {% empty %}
                 No data
                 {% endfor %}
             </td>
             <td>
-                {% for detail in product.details.all %}
+                {% for detail in product.prefetched_details %}
                 {{ detail.pricelist.supplier.name }}<br>
                 {% empty %}
                 {% endfor %}
