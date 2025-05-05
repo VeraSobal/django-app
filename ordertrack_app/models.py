@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+from django.core.exceptions import ObjectDoesNotExist
 
 from datetime import datetime
 
@@ -11,6 +12,9 @@ class Client(models.Model):
     comment = models.CharField(
         max_length=450, null=True, blank=True, default=None)
 
+    def __str__(self):
+        return self.name
+
 
 class Supplier (models.Model):
     id = models.CharField(max_length=10, primary_key=True, null=False)
@@ -18,6 +22,9 @@ class Supplier (models.Model):
     comment = models.CharField(
         max_length=450, null=True, blank=True, default=None)
     brand = models.ManyToManyField("Brand", related_name="suppliers")
+
+    def __str__(self):
+        return f'{self.id} - {self.name}'
 
 
 class Brand(models.Model):
@@ -27,7 +34,7 @@ class Brand(models.Model):
         max_length=450, null=True, blank=True, default=None)
 
     def __str__(self):
-        return self.name
+        return f'{self.id} - {self.name}'
 
 
 class Product(models.Model):
@@ -35,6 +42,7 @@ class Product(models.Model):
         VALID = "Valid"
         INVALID = "Invalid"
     id = models.CharField(max_length=200, primary_key=True, null=False)
+    second_id = models.CharField(max_length=200, unique=True, null=True)
     name = models.CharField(null=True, blank=True)  # с точками и -
     description = models.CharField(null=True, blank=True)
     brand = models.ForeignKey(
@@ -44,11 +52,8 @@ class Product(models.Model):
     comment = models.CharField(
         max_length=450, null=True, blank=True, default=None)
 
-    class Meta:
-        unique_together = ("name", "brand")
-
     def __str__(self):
-        return self.name
+        return self.id
 
 
 @receiver(pre_save, sender=Product)
@@ -73,7 +78,7 @@ class PriceList(models.Model):
         max_length=450, null=True, blank=True, default=None)
 
     def __str__(self):
-        return f"{self.supplier.name} - {self.pricelist_date}"
+        return f"{self.supplier.name}"
 
 
 class ProductDetail(models.Model):
@@ -90,17 +95,25 @@ class ProductDetail(models.Model):
 class Order(models.Model):
     id = models.CharField(primary_key=True, null=False, max_length=450)
     name = models.CharField(null=False, blank=False, max_length=450)
-    order_date = models.DateField(default=datetime.today)
+    order_date = models.DateField()
     supplier = models.ForeignKey(
         Supplier, on_delete=models.CASCADE, related_name="orders")
     comment = models.CharField(
         max_length=450, null=True, blank=True, default=None)
 
+    @staticmethod
+    def name_into_id(filename):
+        filename_without_extension = ".".join(filename.split(".")[:-1])
+        name_ends = "-".join(filename_without_extension.upper().replace(
+            " ", "").replace(".", "").split("-")[1:])
+        name_starts = filename_without_extension.split("-")[0].strip()
+        return "-".join([name_starts, name_ends])
+
 
 @receiver(pre_save, sender=Order)
 def set_id(sender, instance, **kwargs):
     if not instance.id:
-        instance.id = instance.name.upper().replace(" ", "")
+        instance.id = instance.name_into_id(instance.name)
 
 
 class OrderItem(models.Model):

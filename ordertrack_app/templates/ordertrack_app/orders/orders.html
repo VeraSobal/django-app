@@ -7,6 +7,13 @@
 <table class="table table-light table-hover">
     <small>
         <tr>
+
+            <th class="col-auto">
+                <button type="button" class="btn btn-outline-success btn-sm"
+                    onclick="location.href='{% url 'neworder'%}'">
+                    <i class="bi bi-plus-square"></i>
+                </button>
+            </th>
             {% if orders %}
             <th class="col-auto">Order</th>
             <th class="col-auto">Confirmation</th>
@@ -15,11 +22,23 @@
         {% for order in orders %}
         <tr>
             <td>
+                <div style="display: flex; gap: 5px;">
+                    <form action="{% url 'deleteorder' order.pk %}" method="POST"
+                        onsubmit="return confirm('Do you really want to delete order {{ order.pk }}?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-x-square"></i>
+                        </button>
+                    </form>
+                </div>
+            </td>
+            <td>
                 <li class="list-group-item">
-                    <a href="{% url 'orderitems' order.pk %}">
-                        <p>{{ order.id }}</p>
+                    <a href="{% url 'vieworder' order.pk %}">
+                        <p>{{ order.name }}</p>
                     </a>
-                    <small>{% if order.comment %}Comment {{ order.comment }}{% else %}-{% endif %}</small>
+                    <small>Id: {{ order.id }}</small><br>
+                    <small>{% if order.comment %}Comment: {{ order.comment }}{% else %}-{% endif %}</small>
                 </li>
             </td>
 

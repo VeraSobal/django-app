@@ -17,7 +17,7 @@ def invoices(request):
     return render(request, template_path/"invoices.html", context=context)
 
 
-def invoiceitems(request, invoice_id):
+def invoice_items(request, invoice_id):
     invoice_items = get_list_or_404(InvoiceItem, invoice_id=invoice_id)
     context = {
         "invoiceitems": invoice_items

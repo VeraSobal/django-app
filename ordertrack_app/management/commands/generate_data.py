@@ -32,7 +32,7 @@ class Command(BaseCommand):
                 name=fake.last_name(),
             )
             if random.randint(1, 10) % 2:
-                supplier.brands.add(brand)
+                supplier.brand.add(brand)
                 state = "VALID"
             else:
                 state = "INVALID"

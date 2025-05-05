@@ -17,7 +17,7 @@ def confirmations(request):
     return render(request, template_path/"confirmations.html", context=context)
 
 
-def confirmationitems(request, confirmation_id):
+def confirmation_items(request, confirmation_id):
     confirmation_items = get_list_or_404(
         ConfirmationItem, confirmation_id=confirmation_id)
     context = {

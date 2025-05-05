@@ -1,0 +1,58 @@
+{% extends 'ordertrack_app/base.html' %}
+
+{% block title %}Orders{% endblock %}
+
+{% block content %}
+<h5>{{ order_form.instance.name }}</h5>
+<div style="display: flex; gap: 5px;">
+
+    <form action="{% url 'deleteorder' order_form.instance.id %}" method="POST"
+        onsubmit="return confirm('Do you really want to delete order {{ order_form.instance.id }}?');"
+        style="display: inline-block;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-x-square"></i>
+        </button>
+    </form>
+    <form action="{% url 'editorder' order_form.instance.id %}">
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil-square"></i>
+        </button>
+    </form>
+    <form action="{% url 'editorder' order_form.instance.id %}" method="POST"">
+        <button type=" submit" class="btn btn-outline-success btn-sm" name="save">
+        <i class="bi bi-check-square"></i>
+        </button>
+
+        {% csrf_token %}
+        {{ formset.management_form }}
+        {{ order_form.as_p }}
+
+
+        <table class="table table-light table-hover">
+            <small>
+                <tr>
+                    {% if formset %}
+                    {% for field in formset.form %}
+                    <th class="col-auto">{{ field.label }}</th>
+                    {% endfor %}
+                    {% endif %}
+                </tr>
+                {% for form in formset %}
+                <tr>
+                    {% for field in form %}
+                    <td>{{ field }}</td>
+                    {% endfor %}
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{{ formset.form.field_count }}" class="text-center">
+                        <li class="list-group-item">No items</li>
+                    </td>
+                </tr>
+                {% endfor %}
+            </small>
+        </table>
+    </form>
+</div>
+{% endblock %}
