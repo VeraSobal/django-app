@@ -5,6 +5,8 @@ from django.http import HttpResponseRedirect
 from ..forms.uploadfile import UploadFileForm
 
 
+import pandas as pd
+
 from pathlib import Path
 
 template_path = Path("ordertrack_app")

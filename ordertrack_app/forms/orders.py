@@ -1,7 +1,13 @@
 from datetime import date
 from django import forms
 from django.core.exceptions import ValidationError
-from ..models import Order, OrderItem
+from ..models import (
+    OrderItem,
+    Order,
+)
+import logging
+
+log = logging.getLogger(__name__)
 
 
 class OrderModelForm(forms.ModelForm):
@@ -67,13 +73,16 @@ class EditOrderModelForm(ViewOrderModelForm):
 class BaseOrderItemModelForm(forms.ModelForm):
     class Meta:
         model = OrderItem
-        fields = ['client', 'product', 'quantity']
+        fields = ['id', 'order', 'client', 'product', 'quantity']
         labels = {
+            'order': '',
             'client': 'Client',
             'product': 'Product',
             'quantity': 'Quantity',
         }
         widgets = {
+            'id': forms.HiddenInput(),
+            'order': forms.Select(attrs={'class': 'form-control'}),
             'client': forms.Select(attrs={'class': 'form-control'}),
             'product': forms.Select(attrs={'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={
@@ -88,6 +97,7 @@ class BaseOrderItemModelForm(forms.ModelForm):
 class ViewOrderItemModelForm(BaseOrderItemModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['order'].widget.attrs['hidden'] = True
         self.fields['client'].widget.attrs['disabled'] = True
         self.fields['product'].widget.attrs['disabled'] = True
         self.fields['quantity'].widget.attrs['disabled'] = True
@@ -97,28 +107,27 @@ class EditOrderItemModelForm(ViewOrderItemModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['quantity'].widget.attrs['disabled'] = False
-        self.fields['client'].required = False
-        self.fields['client'].validators = []
-        self.fields['product'].required = False
-        self.fields['product'].validators = []
+        self.fields['client'].widget.attrs['disabled'] = False
+        self.fields['product'].widget.attrs['disabled'] = False
 
-    def clean(self):
-        cleaned_data = super().clean()
-        if hasattr(self, 'instance'):
-            cleaned_data['client'] = self.instance.client
-            cleaned_data['product'] = self.instance.product
-        return cleaned_data
+    # def clean(self):
+    #     cleaned_data = super().clean()
+    #     if hasattr(self, 'instance'):
+    #         cleaned_data['order'] = self.instance.order
+        # cleaned_data['client'] = self.instance.client
+        # cleaned_data['product'] = self.instance.product
+        # return cleaned_data
 
 
 ViewItemFormSet = forms.modelformset_factory(
     OrderItem,
     form=ViewOrderItemModelForm,
-    extra=0
+    extra=0,
 )
 
 
 EditItemFormSet = forms.modelformset_factory(
     OrderItem,
     form=EditOrderItemModelForm,
-    extra=0
+    extra=0,
 )

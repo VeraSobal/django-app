@@ -101,6 +101,13 @@ class Order(models.Model):
     comment = models.CharField(
         max_length=450, null=True, blank=True, default=None)
 
+    @property
+    def total_quantity(self):
+        return sum(item.quantity for item in self.items.all())
+
+    class Meta:
+        ordering = ['-order_date']
+
     @staticmethod
     def name_into_id(filename):
         filename_without_extension = ".".join(filename.split(".")[:-1])
@@ -108,6 +115,9 @@ class Order(models.Model):
             " ", "").replace(".", "").split("-")[1:])
         name_starts = filename_without_extension.split("-")[0].strip()
         return "-".join([name_starts, name_ends])
+
+    def __str__(self):
+        return self.name
 
 
 @receiver(pre_save, sender=Order)
@@ -136,9 +146,17 @@ class Confirmation(models.Model):
     confirmation_date = models.DateField(default=datetime.today)
     supplier = models.ForeignKey(
         Supplier, on_delete=models.CASCADE, related_name="confirmations")
-    order = models.ManyToManyField("Order", related_name="confirmations")
+    order = models.ManyToManyField(
+        "Order", related_name="confirmations")
     comment = models.CharField(
         max_length=450, null=True, blank=True, default=None)
+
+    @property
+    def total_amount(self):
+        return sum(item.total_amount for item in self.items.all())
+
+    class Meta:
+        ordering = ['-confirmation_date']
 
 
 @receiver(pre_save, sender=Confirmation)
@@ -159,6 +177,12 @@ class ConfirmationItem(models.Model):
     comment = models.CharField(
         max_length=450, null=True, blank=True, default=None)
 
+    @property
+    def total_amount(self):
+        if self.price and self.quantity:
+            return self.price * self.quantity
+        return 0
+
     class Meta:
         unique_together = ("confirmation", "client", "product")
 
@@ -169,10 +193,10 @@ class ConfirmationDelivery(models.Model):
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="delivery_data")
     quantity = models.PositiveIntegerField()
-    delivery_date = models.DateTimeField(null=True, blank=True)
+    delivery_date = models.DateField(null=True, blank=True)
 
     class Meta:
-        unique_together = ("confirmation", "product")
+        unique_together = ("confirmation", "product", "delivery_date")
 
 
 class Invoice(models.Model):

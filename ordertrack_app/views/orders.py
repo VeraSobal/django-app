@@ -11,8 +11,9 @@ from ..forms.orders import (
     EditOrderModelForm,
     ViewOrderModelForm,
     ViewItemFormSet,
-    EditItemFormSet)
-from ..forms.uploadfile import UploadFileForm
+    EditItemFormSet,
+)
+from ..forms.uploadfile import UploadOrderForm
 
 template_path = Path("ordertrack_app") / "orders"
 
@@ -34,7 +35,8 @@ def view_order(request, order_id):
     order_items_formset = ViewItemFormSet(queryset=order_items)
     context = {
         'order_form': order_form,
-        'formset': order_items_formset
+        'formset': order_items_formset,
+        'view_order': True,
     }
     return render(request, template_path/"vieworder.html", context=context)
 
@@ -47,17 +49,18 @@ def edit_order(request, order_id):
         if 'save' in request.POST:
             order_form = EditOrderModelForm(request.POST, instance=order)
             order_items_formset = EditItemFormSet(
-                request.POST, queryset=order_items)
+                request.POST, queryset=order_items, initial=[{'order': order}],)
             if order_form.is_valid() and order_items_formset.is_valid():
                 order_form.save()
                 order_items_formset.save()
                 return redirect(reverse('vieworder', args=[order_form.instance.id]))
 
     order_form = EditOrderModelForm(instance=order)
-    order_items_formset = EditItemFormSet(queryset=order_items)
+    order_items_formset = EditItemFormSet(
+        queryset=order_items, initial=[{'order': order}],)
     context = {
         'order_form': order_form,
-        'formset': order_items_formset
+        'formset': order_items_formset,
     }
     return render(request, template_path/"vieworder.html", context=context)
 
@@ -72,7 +75,7 @@ def delete_order(request, order_id):
 def new_order(request):
     if request.method == 'POST':
         form = OrderModelForm(request.POST)
-        loadform = UploadFileForm(request.POST, request.FILES)
+        loadform = UploadOrderForm(request.POST, request.FILES)
         context = {'form': form, 'loadform': loadform, 'title': 'New Order'}
         action = request.POST.get('action')
         if form.is_valid():
@@ -83,12 +86,13 @@ def new_order(request):
                         # brands = form.cleaned_data.get("brand", [])
                         order_data = loadform.load_excel_order(
                             uploaded_file, supplier=supplier)
-                        request.session['order_data_json'] = loadform.order_data_json(
+                        request.session['order_data_json'] = loadform.data_json(
                             order_data)
                         context['orderdata'] = order_data
                         context['add_order_disabled'] = False
                     except Exception as e:
                         context['orderdata'] = f'Cannot upload data from {uploaded_file}, {e}'
+                        log.info("Ошибка %s", e)
                         context['add_order_disabled'] = True
                 else:
                     context['orderdata'] = f'No file selected. Choose file'
@@ -98,15 +102,22 @@ def new_order(request):
                 if form.is_valid() and loadform.is_valid():
                     order_data_json = json.loads(
                         request.session.get('order_data_json'))
-                    order = form.save()
-                    loadform.save_order_items(
-                        order_data_json=order_data_json, order=order)
+                    # print(order_data_json)
+                    try:
+                        with transaction.atomic():
+                            order = form.save()
+                            loadform.save_order_items(
+                                order_data_json=order_data_json, order=order)
+                    except Exception as e:
+                        context['orderdata'] = f'Cannot save data, {e}'
+                        context['add_order_disabled'] = True
+                        return render(request, template_path/"neworder.html", context)
                     del request.session['order_data_json']
                     return redirect(reverse('orders'))
 
     else:
         form = OrderModelForm()
-        loadform = UploadFileForm()
+        loadform = UploadOrderForm()
         context = {'form': form, 'loadform': loadform,
                    'title': 'New Order', 'add_order_disabled': True}
 

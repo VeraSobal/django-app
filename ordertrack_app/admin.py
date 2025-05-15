@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.http import HttpResponse
+from django.core import serializers
 
 
 from .models import (
@@ -9,8 +11,21 @@ from .models import (
     ProductDetail,
     PriceList,
     Order,
-    OrderItem
+    OrderItem,
+    Confirmation,
+    ConfirmationItem,
+    ConfirmationDelivery,
 )
+
+
+@admin.action(description='Export selected')
+def export_selected(modelAdmin, request, queryset):
+    response = HttpResponse(content_type="application/json")
+    serializers.serialize("json", queryset, stream=response)
+    return response
+
+
+admin.site.add_action(export_selected)
 
 
 @admin.register(Client)
@@ -45,14 +60,14 @@ class SupplierAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "description", "brand",
+    list_display = ("id", "second_id", "name", "description", "brand",
                     "prices", "state", "comment", )
     ordering = ("brand", "id",)
-    search_fields = ("id", "name",)
+    search_fields = ("id", "second_id", "name",)
     search_help_text = ("Search product id or name")
     list_filter = ("brand__name",)
     show_full_result_count = True
-    fields = ("id", "name", "description", "brand", "comment",)
+    fields = ("id", "second_id", "name", "description", "brand", "comment",)
 
     @admin.action(description='Revert state')
     def revert_state(self, request, queryset):
@@ -120,10 +135,50 @@ class OrderAdmin(admin.ModelAdmin):
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
     list_display = ("order__id", "order__order_date",
-                    "client__name", "product__name", "quantity")
+                    "client__name", "product__id", "quantity")
     ordering = ("order__order_date", "client__name")
     search_fields = ("order__id",)
     search_help_text = ("Search name")
     list_filter = ("order__name", "order__order_date", "client__name")
     show_full_result_count = True
     fields = ("order", "client", "product", "quantity",)
+
+
+@admin.register(Confirmation)
+class ConfirmationAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "confirmation_code",
+                    "confirmation_date", "supplier__name", "order__name", "comment")
+    ordering = ("confirmation_date", "supplier")
+    search_fields = ("name", "confirmation_code")
+    search_help_text = ("Search name")
+    list_filter = ("supplier__name",)
+    show_full_result_count = True
+    fields = ("id", "name", "confirmation_code",
+              "confirmation_date", "supplier", "comment",)
+
+
+@admin.register(ConfirmationItem)
+class ConfirmationItemAdmin(admin.ModelAdmin):
+    list_display = ("confirmation__confirmation_code",
+                    "client__name", "product__id", "quantity", "price", "comment")
+    ordering = ("confirmation__confirmation_date", "client__name")
+    search_fields = ("confirmation__confirmation_code",)
+    search_help_text = ("Search name")
+    list_filter = ("confirmation__confirmation_code", "client__name")
+    show_full_result_count = True
+    fields = ("confirmation", "client", "product",
+              "quantity", "price", "comment",)
+
+
+@admin.register(ConfirmationDelivery)
+class ConfirmationDeliveryAdmin(admin.ModelAdmin):
+    list_display = ("confirmation__confirmation_code",
+                    "product__id", "quantity", "delivery_date")
+    ordering = ("-delivery_date", "confirmation__confirmation_date")
+    search_fields = ("confirmation__confirmation_code",)
+    search_help_text = ("Search name")
+    list_filter = ("confirmation__confirmation_code",)
+    show_full_result_count = True
+    fields = ("confirmation", "product", "quantity", "delivery_date", )
+    verbose_name = "ConfirmationDelivery"
+    verbose_name_plural = "ConfirmationDeliveries"

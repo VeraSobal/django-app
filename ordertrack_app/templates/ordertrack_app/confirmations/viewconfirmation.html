@@ -1,0 +1,103 @@
+{% extends 'ordertrack_app/base.html' %}
+
+{% block title %}Confirmations{% endblock %}
+
+{% block content %}
+<h5 style="color: blue;">Confirmation: {{ conformation_form.instance.confirmation_code }}
+    {{conformation_form.instance.name}}</h5>
+<div style="margin-bottom: 10px;">
+    <li class="list-group-item">
+        {% for order in conformation_form.instance.order.all %}
+        <small><a style="color: green;" href="{% url 'vieworder' order.id %}" class="order-link">
+                {{ order.name}}
+            </a></small><br>
+        {% empty %}
+        <small>No orders</small>
+        {% endfor %}
+    </li>
+</div>
+<div style="display: flex; gap: 5px;">
+    <form action="{% url 'deleteconfirmation' conformation_form.instance.id %}" method="POST"
+        onsubmit="return confirm('Do you really want to delete confirmation {{ conformation_form.instance.id }}?');"
+        style="display: inline-block;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger btn-sm" data-toggle="tooltip" title="Delete">
+            <i class="bi bi-x-square"></i>
+        </button>
+    </form>
+    <form action="{% url 'exportconfirmationtoexcel' conformation_form.instance.id %}" method="POST">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-dark btn-sm" data-toggle="tooltip" title="Export to Excel">
+            <i class="bi bi-file-earmark-spreadsheet"></i>
+        </button>
+    </form>
+    <form action="{% url 'confirmations' %}" method="GET">
+        <button type="submit" class="btn btn-outline-warning btn-sm" data-toggle="tooltip" title="Go to Confirmations">
+            <i class="bi bi-list"></i>
+        </button>
+    </form>
+    <form action="{% url 'editconfirmation' conformation_form.instance.id %}">
+        <button type="submit" {% if not view_conformation %}class="invivsible" disabled {% endif %}
+            class="btn btn-outline-primary btn-sm" data-toggle="tooltip" title="Edit">
+            <i class="bi bi-pencil-square"></i>
+        </button>
+    </form>
+    <form action="{% url 'editconfirmation' conformation_form.instance.id %}" method="POST">
+        <button type=" submit" {% if view_conformation %}class="invivsible" disabled {% endif %}
+            class="btn btn-outline-success btn-sm" name="save" data-toggle="tooltip" title="Save">
+            <i class="bi bi-check-square"></i>
+        </button>
+        {% csrf_token %}
+        {{ formset.management_form }}
+        {{ conformation_form.as_p }}
+        <p class="col-auto  text-danger">Total amount: {{ conformation_form.instance.total_amount|floatformat:"g" }}
+        </p>
+        {{ formset.non_form_errors }}
+        <table class="table table-hover">
+            <small>
+                <tr>
+                    {% if formset %}
+                    {% for field in formset.form %}
+                    <th class="col-auto">{{ field.label }}</th>
+                    {% endfor %}
+                    {% endif %}
+                </tr>
+                {% for form in formset %}
+                <tr>
+                    {% for field in form %}
+                    <td>{{ field }}</td>
+                    {% endfor %}
+                </tr>
+
+                {% empty %}
+                <tr>
+                    <td colspan="{{ formset.form.field_count }}" class="text-center">
+                        <li class="list-group-item">No items</li>
+                    </td>
+                </tr>
+                {% endfor %}
+            </small>
+        </table>
+    </form>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Находим все селекты product в формсете
+        const productSelects = document.querySelectorAll('[name$="-product"]');
+
+        productSelects.forEach(select => {
+            select.addEventListener('change', function () {
+                const selectedOption = this.options[this.selectedIndex];
+                // Находим соответствующее поле цены в той же форме
+                const priceInput = this.closest('form').querySelector('[name$="-price"]');
+
+                if (selectedOption.hasAttribute('data-price')) {
+                    priceInput.value = selectedOption.getAttribute('data-price');
+                } else {
+                    priceInput.value = '';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
