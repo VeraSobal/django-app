@@ -3,12 +3,12 @@
 {% block title %}Confirmations{% endblock %}
 
 {% block content %}
-<h5 style="color: blue;">Confirmation: {{ conformation_form.instance.confirmation_code }}
-    {{conformation_form.instance.name}}</h5>
+<h5 style="color: blue;">Confirmation: {{ confirmation_form.instance.confirmation_code }}
+    {{confirmation_form.instance.name}}</h5>
 <div style="margin-bottom: 10px;">
     <li class="list-group-item">
-        {% for order in conformation_form.instance.order.all %}
-        <small><a style="color: green;" href="{% url 'vieworder' order.id %}" class="order-link">
+        {% for order in confirmation_form.instance.order.all %}
+        <small><a style="color: green;" href="{% url 'vieworder' order.pk %}" class="order-link">
                 {{ order.name}}
             </a></small><br>
         {% empty %}
@@ -17,15 +17,15 @@
     </li>
 </div>
 <div style="display: flex; gap: 5px;">
-    <form action="{% url 'deleteconfirmation' conformation_form.instance.id %}" method="POST"
-        onsubmit="return confirm('Do you really want to delete confirmation {{ conformation_form.instance.id }}?');"
+    <form action="{% url 'deleteconfirmation' confirmation_form.instance.pk %}" method="POST"
+        onsubmit="return confirm('Do you really want to delete confirmation {{ confirmation_form.instance.pk }}?');"
         style="display: inline-block;">
         {% csrf_token %}
         <button type="submit" class="btn btn-outline-danger btn-sm" data-toggle="tooltip" title="Delete">
             <i class="bi bi-x-square"></i>
         </button>
     </form>
-    <form action="{% url 'exportconfirmationtoexcel' conformation_form.instance.id %}" method="POST">
+    <form action="{% url 'exportconfirmationtoexcel' confirmation_form.instance.pk %}" method="POST">
         {% csrf_token %}
         <button type="submit" class="btn btn-outline-dark btn-sm" data-toggle="tooltip" title="Export to Excel">
             <i class="bi bi-file-earmark-spreadsheet"></i>
@@ -36,21 +36,21 @@
             <i class="bi bi-list"></i>
         </button>
     </form>
-    <form action="{% url 'editconfirmation' conformation_form.instance.id %}">
-        <button type="submit" {% if not view_conformation %}class="invivsible" disabled {% endif %}
+    <form action="{% url 'editconfirmation' confirmation_form.instance.pk %}">
+        <button type="submit" {% if not view_confirmation %}class="invivsible" disabled {% endif %}
             class="btn btn-outline-primary btn-sm" data-toggle="tooltip" title="Edit">
             <i class="bi bi-pencil-square"></i>
         </button>
     </form>
-    <form action="{% url 'editconfirmation' conformation_form.instance.id %}" method="POST">
-        <button type=" submit" {% if view_conformation %}class="invivsible" disabled {% endif %}
+    <form action="{% url 'editconfirmation' confirmation_form.instance.pk %}" method="POST">
+        <button type=" submit" {% if view_confirmation %}class="invivsible" disabled {% endif %}
             class="btn btn-outline-success btn-sm" name="save" data-toggle="tooltip" title="Save">
             <i class="bi bi-check-square"></i>
         </button>
         {% csrf_token %}
         {{ formset.management_form }}
-        {{ conformation_form.as_p }}
-        <p class="col-auto  text-danger">Total amount: {{ conformation_form.instance.total_amount|floatformat:"g" }}
+        {{ confirmation_form.as_p }}
+        <p class="col-auto  text-danger">Total amount: {{ confirmation_form.instance.total_amount|floatformat:"g" }}
         </p>
         {{ formset.non_form_errors }}
         <table class="table table-hover">

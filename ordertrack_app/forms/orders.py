@@ -119,14 +119,14 @@ class EditOrderItemModelForm(ViewOrderItemModelForm):
         # return cleaned_data
 
 
-ViewItemFormSet = forms.modelformset_factory(
+ViewOrderItemFormSet = forms.modelformset_factory(
     OrderItem,
     form=ViewOrderItemModelForm,
     extra=0,
 )
 
 
-EditItemFormSet = forms.modelformset_factory(
+EditOrderItemFormSet = forms.modelformset_factory(
     OrderItem,
     form=EditOrderItemModelForm,
     extra=0,

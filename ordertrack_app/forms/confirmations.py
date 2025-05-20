@@ -10,6 +10,10 @@ from ..models import Confirmation, ConfirmationItem, Supplier, Product, Client
 import pandas as pd
 from io import BytesIO
 
+import logging
+
+log = logging.getLogger(__name__)
+
 
 class ConfirmationModelForm(forms.ModelForm):
     class Meta:
@@ -32,6 +36,10 @@ class ConfirmationModelForm(forms.ModelForm):
             'order': forms.SelectMultiple(attrs={'class': 'form-control'}),
             'comment': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Input comment'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['supplier'].initial = "T00016"
 
     def clean_confirmation_date(self):
         confirmation_date = self.cleaned_data.get('confirmation_date')
@@ -60,13 +68,15 @@ class ConfirmationModelForm(forms.ModelForm):
 class BaseConfirmationModelForm(forms.ModelForm):
     class Meta:
         model = Confirmation
-        fields = ['name', 'comment']
+        fields = ['name', 'order', 'comment']
         labels = {
             'name': '',
+            'order': 'Order',
             'comment': 'Comment',
         }
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': ''}),
+            'order': forms.SelectMultiple(attrs={'class': 'form-control'}),
             'comment': forms.TextInput(attrs={'class': 'form-control', 'placeholder': ''}),
         }
 
@@ -75,12 +85,14 @@ class ViewConfirmationModelForm(BaseConfirmationModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['name'].widget.attrs['hidden'] = True
+        self.fields['order'].widget.attrs['disabled'] = True
         self.fields['comment'].widget.attrs['disabled'] = True
 
 
 class EditConfirmationModelForm(ViewConfirmationModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['order'].widget.attrs['disabled'] = False
         self.fields['comment'].widget.attrs['disabled'] = False
 
 
@@ -101,8 +113,8 @@ class ProductPriceSelectWidget(forms.Select):
                     price = confirmation_item.price
                     option['attrs']['data-price'] = f'{price}'
             except Exception as e:
-                print(
-                    f'No price for {value}: {str(e)}')
+                log.info(
+                    'No price for %s : %s', value, str(e))
         return option
 
 
@@ -183,6 +195,9 @@ class ConfirmationItemFormSet(BaseModelFormSet):
             # 'onclick': 'return confirm("Do you really want to delete the record");'
         })
 
+    def if_order_has_changed(self):
+        order = self.confirmation.order
+
     def get_total(self, fieldname):
         total = 0
         for form in self.forms:
@@ -194,7 +209,6 @@ class ConfirmationItemFormSet(BaseModelFormSet):
     def __check_items_initial(self):
         product_quantity_dict = dict(self.confirmation.items.values_list(
             'product').annotate(quantity=Sum('quantity')))
-        print(product_quantity_dict)
         for form in self.forms:
             if self.can_delete and self._should_delete_form(form):
                 continue
@@ -214,7 +228,6 @@ class ConfirmationItemFormSet(BaseModelFormSet):
             client_product = (form.cleaned_data.get("client"),
                               form.cleaned_data.get("product"))
             if client_product in client_product_set:
-                print("Product-Client must be distinct.")
                 raise ValidationError(
                     "Product-Client must be distinct.")
             client_product_set.add(client_product)
@@ -239,7 +252,7 @@ class ConfirmationItemFormSet(BaseModelFormSet):
         return excel_file
 
 
-ViewItemFormSet = forms.modelformset_factory(
+ViewConfirmationItemFormSet = forms.modelformset_factory(
     ConfirmationItem,
     form=ViewConfirmationItemModelForm,
     formset=ConfirmationItemFormSet,
@@ -247,7 +260,7 @@ ViewItemFormSet = forms.modelformset_factory(
 )
 
 
-EditItemFormSet = forms.modelformset_factory(
+EditConfirmationItemFormSet = forms.modelformset_factory(
     ConfirmationItem,
     form=EditConfirmationItemModelForm,
     formset=ConfirmationItemFormSet,

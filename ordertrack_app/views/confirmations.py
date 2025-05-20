@@ -1,18 +1,22 @@
 import logging
 from pathlib import Path
 import json
+from copy import deepcopy
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.urls import reverse_lazy
 from django.db import transaction
 from django.http import HttpResponse
+from django.contrib import messages
+from django.db.models import F
 
-from ..models import Confirmation, ConfirmationItem, Supplier, Product, Client
+from ..models import Confirmation, ConfirmationItem, ConfirmationDelivery
 from ..forms.confirmations import (
     ConfirmationModelForm,
     EditConfirmationModelForm,
     ViewConfirmationModelForm,
-    ViewItemFormSet,
-    EditItemFormSet)
+    ViewConfirmationItemFormSet,
+    EditConfirmationItemFormSet)
 from ..forms.uploadfile import UploadConfirmationForm
 
 template_path = Path("ordertrack_app") / "confirmations"
@@ -20,140 +24,238 @@ template_path = Path("ordertrack_app") / "confirmations"
 log = logging.getLogger(__name__)
 
 
-def confirmations(request):
-    confirmations_list = Confirmation.objects.all(
-    ).order_by("-confirmation_date", "name")
-    context = {
-        "confirmations": confirmations_list,
-    }
-    return render(request, template_path/"confirmations.html", context=context)
+class ConfirmationListView(ListView):
+    model = Confirmation
+    template_name = template_path/"confirmations.html"
+    context_object_name = "confirmations"
+
+    def get_queryset(self):
+        return super().get_queryset().order_by("-confirmation_date", "name")
 
 
-def view_confirmation(request, confirmation_id):
-    confirmation = get_object_or_404(Confirmation, id=confirmation_id)
-    confirmation_items = ConfirmationItem.objects.filter(
-        confirmation_id=confirmation_id)  # .order_by("-client_id")
-    form = ViewConfirmationModelForm(instance=confirmation)
-    formset = ViewItemFormSet(queryset=confirmation_items,
-                              form_kwargs={'confirmation': confirmation})
-    context = {
-        'conformation_form': form,
-        'formset': formset,
-        'view_conformation': True,
-    }
-    return render(request, template_path/"viewconfirmation.html", context=context)
+class ConfirmationDetailView(DetailView):
+    model = Confirmation
+    model_item = ConfirmationItem
+    form_class = ViewConfirmationModelForm
+    formset_class = ViewConfirmationItemFormSet
+    template_name = template_path/"viewconfirmation.html"
+    context_object_name = 'viewconfirmation'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        confirmation = self.get_object()
+        confirmation_items = self.model_item.objects.select_related(
+            'client',
+            'product'
+        ).filter(
+            confirmation=confirmation)
+        confirmation_form = self.form_class(instance=confirmation)
+        confirmation_items_formset = self.formset_class(
+            queryset=confirmation_items,
+            form_kwargs={'confirmation': confirmation})
+        non_client_products = list(confirmation_items.filter(
+            client_id="Unknown").values_list('product', flat=True))
+        if non_client_products:
+            messages.error(
+                self.request, f"Products have no client data : {', '.join(non_client_products)}")
+        context.update({
+            'confirmation_form': confirmation_form,
+            'formset': confirmation_items_formset,
+            'view_confirmation': True,
+        })
+        return context
 
 
-def edit_confirmation(request, confirmation_id):
-    confirmation = get_object_or_404(Confirmation, id=confirmation_id)
-    confirmation_items = ConfirmationItem.objects.filter(
-        confirmation_id=confirmation_id)  # .order_by("-client_id")
+class ConfirmationDeleteView(DeleteView):
+    model = Confirmation
+    success_url = reverse_lazy('confirmations')
 
-    if request.method == 'POST':
-        if 'save' in request.POST:
-            form = EditConfirmationModelForm(
-                request.POST, instance=confirmation)
-            formset = EditItemFormSet(
-                request.POST, form_kwargs={'confirmation': confirmation})
+    def form_valid(self, form):
+        messages.success(
+            self.request, f'Confirmation {self.object.pk} was deleted')
+        return super().form_valid(form)
+
+    # def form_valid(self, form):
+    #     referer_url = self.request.META.get('HTTP_REFERER', '/')
+    #     if self.object.invoices.exists():
+    #         messages.error(
+    #             self.request,
+    #             f"Cannot delete confirmation {self.object.pk}, as it has invoices"
+    #         )
+    #         return redirect(self.request.META.get('HTTP_REFERER', '/'))
+    #     return super().form_valid(form)
+
+
+class ConfirmationUpdateView(UpdateView):
+    model = Confirmation
+    model_item = ConfirmationItem
+    form_class = EditConfirmationModelForm
+    formset_class = EditConfirmationItemFormSet
+    template_name = template_path/"viewconfirmation.html"
+    context_object_name = 'editconfirmation'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        confirmation = self.get_object()
+        confirmation_items = self.model_item.objects.select_related(
+            'client',
+            'product'
+        ).filter(
+            confirmation=confirmation)
+        formset = self.formset_class(queryset=confirmation_items,
+                                     form_kwargs={'confirmation': confirmation})
+        context = {
+            'confirmation_form': self.get_form(),
+            'formset': formset,
+            'view_confirmation': False,
+        }
+        return context
+
+    def get_success_url(self):
+        return reverse_lazy('viewconfirmation', kwargs={'pk': self.object.pk})
+
+    def order_has_changed(self, form):
+        order = form.cleaned_data["order"]
+        initial_order = self.get_object().order.all()
+        if len(order) == len(initial_order):
+            for item in order:
+                if item not in initial_order:
+                    return True
+            return False
+        else:
+            return True
+
+    def apply_new_order(self, confirmation):
+        confirmation_data_json = list(confirmation.items.annotate(
+            product_name=F('product__name')
+        ).values(
+            'product',
+            'quantity',
+            'price',
+            'product_name'
+        ))
+        confirmation.items.all().delete()
+        self.model_item.save_confirmation_items(
+            confirmation_data_json, confirmation)
+
+    def form_valid(self, form):
+        context = self.get_context_data()
+        confirmation = self.get_object()
+        if 'save' in self.request.POST:
+            formset = self.formset_class(
+                self.request.POST, form_kwargs={'confirmation': confirmation})
             if form.is_valid() and formset.is_valid():
+                order_has_changed = self.order_has_changed(form)
                 form.save()
+                if order_has_changed:
+                    self.apply_new_order(confirmation)
+                    messages.warning(
+                        self.request, f'New order has been applied to set clients')
+                    return super().form_valid(form)
                 formset.save(commit=False)
                 for obj in formset.deleted_objects:
                     obj.delete()
                 formset.save()
-                return redirect(reverse('viewconfirmation', args=[form.instance.id]))
+                return super().form_valid(form)
             else:
-                context = {
+                # for error in formset.non_form_errors():
+                #     messages.error(self.request, error)
+                context.update({
                     'conformation_form': form,
                     'formset': formset,
-                }
-                return render(request, template_path/"viewconfirmation.html", context=context)
-
-    form = EditConfirmationModelForm(instance=confirmation)
-    formset = EditItemFormSet(queryset=confirmation_items,
-                              form_kwargs={'confirmation': confirmation})
-    context = {
-        'conformation_form': form,
-        'formset': formset,
-    }
-    return render(request, template_path/"viewconfirmation.html", context=context)
+                    'formset_errors': formset.non_form_errors(),
+                })
+                return self.render_to_response(context)
 
 
-def delete_confirmation(request, confirmation_id):
-    if request.method == 'POST':
-        confirmation = Confirmation.objects.get(id=confirmation_id)
-        confirmation.delete()
-    return redirect(reverse('confirmations'))
+class ConfirmationCreateView(CreateView):
+    model = Confirmation
+    model_item = ConfirmationItem
+    model_delivery = ConfirmationDelivery
+    form_class = ConfirmationModelForm
+    loadform_class = UploadConfirmationForm
+    template_name = template_path/"addconfirmation.html"
+    context_object_name = 'addconfirmation'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        loadform = self.loadform_class
+        context.update({
+            'form': self.get_form(),
+            'loadform': loadform,
+            'title': 'New Confirmation',
+            'add_confirmation_disabled': True
+        }),
+        return context
 
-def new_confirmation(request):
-    if request.method == 'POST':
-        form = ConfirmationModelForm(request.POST)
-        loadform = UploadConfirmationForm(request.POST, request.FILES)
-        context = {'form': form, 'loadform': loadform,
-                   'title': 'New Confirmation'}
-        action = request.POST.get('action')
-        if form.is_valid():
-            if action == 'preview':
-                if uploaded_file := request.FILES.get('file'):
-                    try:
-                        supplier = form.cleaned_data["supplier"]
-                        # brands = form.cleaned_data.get("brand", [])
-                        confirmation_code, confirmation_data = loadform.load_excel_confirmation(
-                            uploaded_file, supplier=supplier)
-                        current_values = {
-                            'order': request.POST.getlist('order'),
-                        }
-                        form.instance.confirmation_code = confirmation_code
-                        form.save(commit=False)
-                        context['form'] = ConfirmationModelForm(
-                            instance=form.instance,
-                            initial=current_values)
-                        request.session['confirmation_data_json'] = loadform.data_json(
-                            confirmation_data)
-                        context['confirmationdata'] = confirmation_data
-                        context['add_confirmation_disabled'] = False
-                    except Exception as e:
-                        context['confirmationdata'] = f'Cannot upload data from {uploaded_file}, {e}'
-                        context['add_confirmation_disabled'] = True
-                else:
-                    context['confirmationdata'] = f'No file selected. Choose file'
-                    context['add_confirmation_disabled'] = True
-                return render(request, template_path/"newconfirmation.html", context)
-            elif action == 'add':
-                if form.is_valid() and loadform.is_valid():
-                    confirmation_data_json = json.loads(
-                        request.session.get('confirmation_data_json'))
-                    try:
-                        with transaction.atomic():
-                            confirmation = form.save(commit=False)
-                            confirmation.save()
-                            form.save_m2m()
-                            loadform.save_confirmation_items(
-                                confirmation_data_json=confirmation_data_json, confirmation=confirmation)
-                    except Exception as e:
-                        context['confirmationdata'] = f'Cannot save data, {e}'
-                        context['add_confirmation_disabled'] = True
-                        return render(request, template_path/"newconfirmation.html", context)
-                    del request.session['confirmation_data_json']
-                    return redirect(reverse('viewconfirmation', args=[form.instance.id]))
+    def get_success_url(self):
+        return reverse_lazy('viewconfirmation', kwargs={'pk': self.object.pk})
 
-    else:
-        form = ConfirmationModelForm(
-            initial={'supplier': Supplier.objects.get(id="T00016")})
-        loadform = UploadConfirmationForm()
-        context = {'form': form, 'loadform': loadform,
-                   'title': 'New Confirmation', 'add_confirmation_disabled': True}
-
-    return render(request, template_path/"newconfirmation.html", context)
+    def form_valid(self, form):
+        context = self.get_context_data()
+        loadform = self.loadform_class(self.request.POST, self.request.FILES)
+        action = self.request.POST.get('action')
+        if action == 'preview':
+            if uploaded_file := self.request.FILES.get('file'):
+                try:
+                    supplier = form.cleaned_data["supplier"]
+                    # brands = form.cleaned_data.get("brand", [])
+                    confirmation_code, confirmation_data = loadform.load_excel_confirmation(
+                        uploaded_file, supplier=supplier)
+                    current_values = {
+                        'order': self.request.POST.getlist('order'),
+                    }
+                    form.instance.confirmation_code = confirmation_code
+                    form.save(commit=False)
+                    self.request.session['confirmation_data_json'] = loadform.data_json(
+                        confirmation_data)
+                    context.update({
+                        'form': self.form_class(instance=form.instance, initial=current_values),
+                        'confirmationdata': confirmation_data,
+                        'add_confirmation_disabled': False,
+                    })
+                except Exception as e:
+                    messages.error(
+                        self.request, f'Cannot upload data from {uploaded_file}, {str(e)}')
+                    context.update({
+                        'add_order_disabled': True,
+                    })
+            else:
+                messages.error(self.request, f'No file selected. Choose file')
+                context.update({
+                    'add_order_disabled': True,
+                })
+            return self.render_to_response(context)
+        elif action == 'add':
+            if form.is_valid() and loadform.is_valid():
+                confirmation_data_json = json.loads(
+                    self.request.session.get('confirmation_data_json'))
+                try:
+                    with transaction.atomic():
+                        confirmation = form.save(commit=False)
+                        confirmation.save()
+                        form.save_m2m()
+                        self.model_item.save_confirmation_items(
+                            confirmation_data_json=confirmation_data_json, confirmation=confirmation)
+                        self.model_delivery.save_confirmation_delivery(
+                            confirmation_data_json=confirmation_data_json, confirmation=confirmation)
+                except Exception as e:
+                    messages.error(self.request, f'Cannot save data, {e}')
+                    context.update({
+                        'add_order_disabled': True,
+                    })
+                    return self.render_to_response(context)
+                del self.request.session['confirmation_data_json']
+                messages.success(self.request, 'Order is created')
+                return super().form_valid(form)
 
 
 def export_to_excel(request, confirmation_id):
     confirmation = Confirmation.objects.get(id=confirmation_id)
     confirmation_items = ConfirmationItem.objects.filter(
         confirmation_id=confirmation_id).order_by("-client_id")
-    formset = ViewItemFormSet(queryset=confirmation_items, form_kwargs={
-                              'confirmation': confirmation})
+    formset = ViewConfirmationItemFormSet(queryset=confirmation_items, form_kwargs={
+        'confirmation': confirmation})
     excel_file = formset.export_to_excel()
     if excel_file:
         excel_response = HttpResponse(

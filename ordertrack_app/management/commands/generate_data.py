@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from ordertrack_app.models import (
+from ordertrack_app.models.invoices import (
     Client,
     Brand,
     Supplier,

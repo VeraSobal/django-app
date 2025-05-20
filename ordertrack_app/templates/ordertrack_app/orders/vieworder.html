@@ -7,7 +7,7 @@
 <div style="margin-bottom: 10px;">
     <li class="list-group-item">
         {% for confirmation in order_form.instance.confirmations.all %}
-        <small><a style="color: blue;" href="{% url 'viewconfirmation' confirmation.id %}" class="order-link">
+        <small><a style="color: blue;" href="{% url 'viewconfirmation' confirmation.pk %}" class="order-link">
                 {{ confirmation.confirmation_code }} {{ confirmation.name }}
             </a></small><br>
         {% empty %}
@@ -17,8 +17,8 @@
 </div>
 <div style="display: flex; gap: 5px;">
 
-    <form action="{% url 'deleteorder' order_form.instance.id %}" method="POST"
-        onsubmit="return confirm('Do you really want to delete order {{ order_form.instance.id }}?');"
+    <form action="{% url 'deleteorder' order_form.instance.pk %}" method="POST"
+        onsubmit="return confirm('Do you really want to delete order {{ order_form.instance.pk }}?');"
         style="display: inline-block;">
         {% csrf_token %}
         <button type="submit" class="btn btn-outline-danger btn-sm">
@@ -36,13 +36,13 @@
             <i class="bi bi-list"></i>
         </button>
     </form>
-    <form action="{% url 'editorder' order_form.instance.id %}">
+    <form action="{% url 'editorder' order_form.instance.pk %}">
         <button type="submit" {% if not view_order %}class="invivsible" disabled {% endif %}
             class="btn btn-outline-primary btn-sm">
             <i class="bi bi-pencil-square"></i>
         </button>
     </form>
-    <form action="{% url 'editorder' order_form.instance.id %}" method="POST"">
+    <form action="{% url 'editorder' order_form.instance.pk %}" method="POST"">
         <button type=" submit" {% if view_order %}class="invivsible" disabled {% endif %}
         class="btn btn-outline-success btn-sm" name="save">
         <i class="bi bi-check-square"></i>
