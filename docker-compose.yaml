@@ -1,0 +1,106 @@
+services:
+  redis:
+    image: redis
+    container_name: redis
+    hostname: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 1s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ordertrack-network
+
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    hostname: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: ${ORDERTRACK_CONFIG__DB_HOST}
+      POSTGRES_DB: ${ORDERTRACK_CONFIG__DB_NAME}
+      POSTGRES_USER: ${ORDERTRACK_CONFIG__DB_USER}
+      POSTGRES_PASSWORD: ${ORDERTRACK_CONFIG__DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - ./.env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - ordertrack-network
+
+  ordertrack:
+    build:
+      dockerfile: ./docker-build/ordertrack/Dockerfile
+      context: .
+    container_name: ordertrack
+    hostname: ordertrack
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${ORDERTRACK_CONFIG__DJANGO_SECRET_KEY}
+      DJANGO_SUPERUSER_USERNAME: ${ORDERTRACK_CONFIG__DJANGO_SUPERUSER_USERNAME}
+      DJANGO_SUPERUSER_PASSWORD: ${ORDERTRACK_CONFIG__DJANGO_SUPERUSER_PASSWORD}
+      DJANGO_SUPERUSER_EMAIL: ${ORDERTRACK_CONFIG__DJANGO_SUPERUSER_EMAIL}
+      DEBUG: ${ORDERTRACK_CONFIG__DJANGO_DEBUG}
+      POSTGRES_HOST: ${ORDERTRACK_CONFIG__DB_HOST}
+      POSTGRES_DB: ${ORDERTRACK_CONFIG__DB_NAME}
+      POSTGRES_USER: ${ORDERTRACK_CONFIG__DB_USER}
+      POSTGRES_PASSWORD: ${ORDERTRACK_CONFIG__DB_PASSWORD}
+    env_file:
+      - ./.env
+    command:
+      - gunicorn
+      - config.wsgi:application
+      - --workers
+      - "2"
+      - --bind
+      - 0.0.0.0:8000
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+    volumes:
+      - static_data:/home/app/staticfiles
+    ports:
+      - "8000:8000"
+    networks:
+      - ordertrack-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    build: 
+      dockerfile: ./docker-build/nginx/Dockerfile
+      context: .
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "1337:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - static_data:/home/app/staticfiles
+    networks:
+      - ordertrack-network
+    depends_on:
+      - ordertrack
+
+networks:
+  ordertrack-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  static_data:

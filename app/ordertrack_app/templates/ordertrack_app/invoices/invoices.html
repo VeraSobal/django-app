@@ -1,0 +1,34 @@
+{% extends 'ordertrack_app/base.html' %}
+
+{% block title %}Invoices{% endblock %}
+
+{% block content %}
+<h2>Invoices</h2>
+<table class="table table-light table-hover">
+    <small>
+        <tr>
+            {% if invoices %}
+            <th class="col-auto">Invoice</th>
+            <th class="col-auto">Date</th>
+            {% endif %}
+        </tr>
+        {% for invoice in invoices %}
+        <tr>
+            <td>
+                <li class="list-group-item">
+                    <a href="{% url 'invoiceitems' invoice.pk %}">
+                        <p>{{ invoice.name }}</p>
+                    </a>
+                    <small>{% if invoice.comment %}Comment {{ invoice.comment }}{% else %}-{% endif %}</small>
+                </li>
+            </td>
+            <td>
+                <p>{{ invoice.invoice_date }}</p>
+            </td>
+        </tr>
+        {% empty %}
+        <li class="list-group-item">No invoices</li>
+        {% endfor %}
+    </small>
+</table>
+{% endblock %}

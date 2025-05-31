@@ -1,0 +1,61 @@
+{% extends 'ordertrack_app/base.html' %}
+
+{% block title %}Orders{% endblock %}
+
+{% block content %}
+<h2>Orders</h2>
+<table class="table table-light table-hover">
+    <small>
+        <tr>
+
+            <th class="col-auto">
+                <button type="button" class="btn btn-outline-success btn-sm"
+                    onclick="location.href='{% url 'addorder' %}'">
+                    <i class="bi bi-plus-square"></i>
+                </button>
+            </th>
+            {% if orders %}
+            <th class="col-auto">Order</th>
+            <th class="col-auto">Confirmation</th>
+            {% endif %}
+        </tr>
+        {% for order in orders %}
+        <tr>
+            <td>
+                <div style="display: flex; gap: 5px;">
+                    <form action="{% url 'deleteorder' order.pk %}" method="POST"
+                        onsubmit="return confirm('Do you really want to delete order {{ order.pk }}?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-x-square"></i>
+                        </button>
+                    </form>
+                </div>
+            </td>
+            <td>
+                <li class="list-group-item">
+                    <a href="{% url 'vieworder' order.pk %}">
+                        <p>{{ order.name }}</p>
+                    </a>
+                    <small>Id: {{ order.id }}</small><br>
+                    <small>{% if order.comment %}Comment: {{ order.comment }}{% else %}-{% endif %}</small>
+                </li>
+            </td>
+
+            <td>
+                <li class="list-group-item">
+                    {% for confirmation in order.confirmations.all %}
+                    <small>{{ confirmation.name }}</small><br>
+                    {% empty %}
+                    <small>No confirmations</small>
+                    {% endfor %}
+                </li>
+            </td>
+
+        </tr>
+        {% empty %}
+        <li class="list-group-item">No orders</li>
+        {% endfor %}
+    </small>
+</table>
+{% endblock %}

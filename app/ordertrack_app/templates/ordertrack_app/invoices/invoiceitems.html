@@ -1,0 +1,29 @@
+{% extends 'ordertrack_app/base.html' %}
+
+{% block title %}Invoices{% endblock %}
+
+{% block content %}
+<h2>{{ invoiceitems.0.invoice.name }}</h2>
+<table class="table table-light table-hover">
+    <small>
+        <tr>
+            {% if invoiceitems %}
+            <th class="col-auto">Product</th>
+            <th class="col-auto">Client</th>
+            <th class="col-auto">Quantity</th>
+            <th class="col-auto">Price</th>
+            {% endif %}
+        </tr>
+        {% for invoiceitem in invoiceitems %}
+        <tr>
+            <td>{{ invoiceitem.confirmationitem.product.name }}</td>
+            <td>{{ invoiceitem.confirmationitem.client.name }}</td>
+            <td>{{ invoiceitem.quantity }}</td>
+            <td>{{ invoiceitem.price }}</td>
+        </tr>
+        {% empty %}
+        <li class="list-group-item">No items</li>
+        {% endfor %}
+    </small>
+</table>
+{% endblock %}

@@ -1,0 +1,78 @@
+[
+    {
+        "model": "ordertrack_app.Brand",
+        "pk": "B01",
+        "fields": {
+            "name": "Brand B01"
+        }
+    },
+    {
+        "model": "ordertrack_app.Brand",
+        "pk": "B02",
+        "fields": {
+            "name": "Brand B02"
+        }
+    },
+    {
+        "model": "ordertrack_app.Brand",
+        "pk": "B03",
+        "fields": {
+            "name": "Brand B03"
+        }
+    },
+    {
+        "model": "ordertrack_app.Brand",
+        "pk": "B04",
+        "fields": {
+            "name": "Brand B04"
+        }
+    },
+    {
+        "model": "ordertrack_app.Client",
+        "pk": "K00101",
+        "fields": {
+            "name": "Client1",
+            "comment": ""
+        }
+    },
+    {
+        "model": "ordertrack_app.Client",
+        "pk": "K00102",
+        "fields": {
+            "name": "Client2",
+            "comment": ""
+        }
+    },
+    {
+        "model": "ordertrack_app.Client",
+        "pk": "K00103",
+        "fields": {
+            "name": "Client3",
+            "comment": "Client3 3"
+        }
+    },
+    {
+        "model": "ordertrack_app.Supplier",
+        "pk": "T00010",
+        "fields": {
+            "name": "Supplier 0",
+            "comment": ""
+        }
+    },
+    {
+        "model": "ordertrack_app.Supplier",
+        "pk": "T00011",
+        "fields": {
+            "name": "Supplier 1",
+            "comment": ""
+        }
+    },
+    {
+        "model": "ordertrack_app.Supplier",
+        "pk": "T00016",
+        "fields": {
+            "name": "Supplier 6",
+            "comment": ""
+        }
+    }
+]
