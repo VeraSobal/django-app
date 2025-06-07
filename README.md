@@ -1,3 +1,34 @@
+
+скачать репозиторий:
+
+###
+    git clone https://github.com/VeraSobal/django-app.git
+
+перейти в директорий проекта
+
+###
+    cd django-app
+
+выполнить в терминале:
+
+###
+    docker-compose up --build -d
+
+открыть в браузере:
+
+###
+    localhost:8000
+
+###
+    localhost:1337/admin
+
+
+
+    
+
+
+
+
 ## <h>Приложение для отслеживания заказов OrderTrack</h>
 
 1. [Описание](#title1)<br>
@@ -72,29 +103,6 @@
 
 To be continued
 
-
-
 ### <a id="title6">6. Как начать</a>
 
-скачать репозиторий:
 
-###
-    git clone https://github.com/VeraSobal/django-app.git
-
-перейти в директорий проекта
-
-###
-    cd django-app
-
-выполнить в терминале:
-
-###
-    docker-compose up --build -d
-
-открыть в браузере:
-
-###
-    localhost:8000
-
-###
-    localhost:1337/admin
